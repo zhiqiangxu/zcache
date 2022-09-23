@@ -59,7 +59,7 @@ func (r *RoundRobin[K, V]) Get(k K) (v V, ok bool) {
 
 }
 
-func (r *RoundRobin[K, V]) Set(k K, v V) (existed bool) {
+func (r *RoundRobin[K, V]) Set(k K, v V) (isNew bool) {
 
 	r.Lock()
 
@@ -68,6 +68,9 @@ func (r *RoundRobin[K, V]) Set(k K, v V) (existed bool) {
 	if existed {
 		r.cache[k] = value[V]{v: v, i: ovalue.i}
 	} else {
+
+		isNew = true
+
 		slot := r.slotsAllocated % uint64(len(r.slots))
 		if r.allAssigned {
 			ok := r.slots[slot]
