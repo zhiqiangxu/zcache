@@ -8,15 +8,15 @@ import (
 
 type RoundRobin[K comparable, V any] struct {
 	sync.RWMutex
-	cache       map[K]value[V]
-	slots       []K
-	freeSlot    int
-	allAssigned bool
+	cache          map[K]value[V]
+	slots          []K
+	slotsAllocated uint64
+	allAssigned    bool
 }
 
 type value[V any] struct {
 	v V
-	i int
+	i uint64
 }
 
 func NewRoundRobin[K comparable, V any](slots int) *RoundRobin[K, V] {
@@ -68,7 +68,7 @@ func (r *RoundRobin[K, V]) Set(k K, v V) (existed bool) {
 	if existed {
 		r.cache[k] = value[V]{v: v, i: ovalue.i}
 	} else {
-		slot := r.freeSlot
+		slot := r.slotsAllocated % uint64(len(r.slots))
 		if r.allAssigned {
 			ok := r.slots[slot]
 			delete(r.cache, ok)
@@ -76,13 +76,25 @@ func (r *RoundRobin[K, V]) Set(k K, v V) (existed bool) {
 
 		r.cache[k] = value[V]{v: v, i: slot}
 		r.slots[slot] = k
-		r.freeSlot = (slot + 1) % len(r.slots)
-		if !r.allAssigned && slot == len(r.slots)-1 {
+		r.slotsAllocated += 1
+		if !r.allAssigned && int(slot) == len(r.slots)-1 {
 			r.allAssigned = true
 		}
 	}
 
 	r.Unlock()
+
+	return
+
+}
+
+func (r *RoundRobin[K, V]) SlotsAllocated() (ret uint64) {
+
+	r.RLock()
+
+	ret = r.slotsAllocated
+
+	r.RUnlock()
 
 	return
 
