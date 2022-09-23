@@ -26,7 +26,7 @@ func NewRoundRobin[K comparable, V any](slots int) *RoundRobin[K, V] {
 	}
 
 	return &RoundRobin[K, V]{
-		cache: make(map[K]value[V]),
+		cache: make(map[K]value[V], slots),
 		slots: make([]K, slots),
 	}
 
