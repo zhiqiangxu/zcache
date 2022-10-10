@@ -103,6 +103,45 @@ func (r *RoundRobin[K, V]) SlotsAllocated() (ret uint64) {
 
 }
 
+func (r *RoundRobin[K, V]) Range(fn func(k K, v V)) {
+	var key K
+
+	r.RLock()
+
+	if r.allAssigned {
+		for i := 0; i < len(r.slots); i++ {
+			key = r.slots[i]
+			fn(key, r.cache[key].v)
+		}
+	} else {
+
+		for i := uint64(0); i < r.slotsAllocated; i++ {
+			key = r.slots[i]
+			fn(key, r.cache[key].v)
+		}
+	}
+
+	r.RUnlock()
+}
+
+func (r *RoundRobin[K, V]) RangeKey(fn func(k K)) {
+
+	r.RLock()
+
+	if r.allAssigned {
+		for i := 0; i < len(r.slots); i++ {
+			fn(r.slots[i])
+		}
+	} else {
+
+		for i := uint64(0); i < r.slotsAllocated; i++ {
+			fn(r.slots[i])
+		}
+	}
+
+	r.RUnlock()
+}
+
 func NewBucketRoundRobin[K comparable, V any](slots, shards int, hash func(K) uint32) *concurrent.Bucket[K, *RoundRobin[K, V]] {
 	return concurrent.NewBucket(shards, func() *RoundRobin[K, V] { return NewRoundRobin[K, V](slots / shards) }, hash)
 }
